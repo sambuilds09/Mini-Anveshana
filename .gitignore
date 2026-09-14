@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+dist/
+.vercel/
+.wrangler/
+
+cookie*.txt
+local-admin-cookie.txt
+tmp-test.pdf

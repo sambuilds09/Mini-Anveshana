@@ -1,0 +1,29 @@
+{
+  "name": "webapp",
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/set-vercel-runtime.mjs",
+    "preview": "vite preview",
+    "deploy": "vercel --prod",
+    "vercel-build": "vite build"
+  },
+  "dependencies": {
+    "hono": "^4.13.5",
+    "postgres": "^3.4.9",
+    "qrcode-generator": "^2.0.4",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@hono/vite-build": "^1.11.1",
+    "@hono/vite-dev-server": "^0.26.1",
+    "@hono/node-server": "^1.19.17",
+    "@types/node": "^26.5.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.4",
+    "wrangler": "^4.110.0"
+  }
+}
