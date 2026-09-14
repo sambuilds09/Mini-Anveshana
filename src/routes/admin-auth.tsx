@@ -22,7 +22,7 @@ adminAuth.get('/admin/login', async (c) => {
           {c.req.query('success') && <div class="alert alert-success">{decodeURIComponent(c.req.query('success') || '')}</div>}
           <form method="post" action="/admin/login" class="form-card">
             <input type="hidden" name="next" value={next} />
-            <div class="field"><label>Email</label><input type="email" name="email" required /></div>
+            <div class="field"><label>Admin ID or Email</label><input type="text" name="email" placeholder="e.g. Admin09 or admin@organization.com" required /></div>
             <div class="field"><label>Password</label><input type="password" name="password" required /></div>
             <button type="submit" class="btn btn-primary btn-block">Log In</button>
           </form>

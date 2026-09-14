@@ -16,6 +16,7 @@ import studentRoutes from './routes/student'
 import adminAuth from './routes/admin-auth'
 import adminDashboard from './routes/admin-dashboard'
 import adminRegistrations from './routes/admin-registrations'
+import adminTeams from './routes/admin-teams'
 import adminColleges from './routes/admin-colleges'
 import adminCategories from './routes/admin-categories'
 import adminProjects from './routes/admin-projects'
@@ -93,6 +94,7 @@ app.route('/', studentRoutes)
 app.route('/', adminAuth)
 app.route('/', adminDashboard)
 app.route('/', adminRegistrations)
+app.route('/', adminTeams)
 app.route('/', adminColleges)
 app.route('/', adminCategories)
 app.route('/', adminProjects)

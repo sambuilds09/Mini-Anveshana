@@ -18,6 +18,15 @@ export type EventSettings = {
   module_projects_public: number
   module_schedule_public: number
   scoring_formula: string
+  home_description: string | null
+  hero_text: string | null
+  home_highlights: string | null
+  rules_eligibility: string | null
+  rules_registration: string | null
+  rules_projects: string | null
+  rules_submission: string | null
+  rules_evaluation: string | null
+  rules_general: string | null
   updated_at: string
 }
 

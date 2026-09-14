@@ -10,9 +10,6 @@ adminColleges.use('/admin/colleges', requireRole('organizer', 'super_admin'))
 adminColleges.use('/admin/colleges/*', requireRole('organizer', 'super_admin'))
 adminColleges.use('/admin/teams', requireRole('organizer', 'super_admin'))
 
-// /admin/teams is an alias view grouped by team (same data as registrations, kept for route completeness)
-adminColleges.get('/admin/teams', async (c) => c.redirect('/admin/registrations'))
-
 adminColleges.get('/admin/colleges', async (c) => {
   const user = c.get('user' as never) as any
   const rows = await c.get('db').many<any>(

@@ -48,6 +48,27 @@ adminSettings.get('/admin/settings', async (c) => {
             </div>
             <button type="submit" class="btn btn-primary">Save Settings</button>
           </form>
+          <div class="dashboard-card" style="margin-top:20px;">
+            <h3>Home</h3>
+            <p class="hint">Edit the main message visitors see on the public home page.</p>
+            <form method="post" action="/admin/settings/home">
+              <div class="field"><label>Description</label><textarea name="home_description">{s.home_description || ''}</textarea></div>
+              <div class="field"><label>Hero Text</label><input name="hero_text" value={s.hero_text || ''} /></div>
+              <div class="field"><label>Important Highlights</label><textarea name="home_highlights">{s.home_highlights || ''}</textarea></div>
+              <button type="submit" class="btn btn-primary btn-sm">Save Home</button>
+            </form>
+          </div>
+          <div class="dashboard-card" style="margin-top:20px;">
+            <h3>Rules</h3>
+            <p class="hint">Use one item per line for simple bullet lists.</p>
+            <form method="post" action="/admin/settings/rules">
+              {[
+                ['rules_eligibility', 'Eligibility'], ['rules_registration', 'Registration Rules'], ['rules_projects', 'Project Rules'],
+                ['rules_submission', 'Submission Rules'], ['rules_evaluation', 'Evaluation Criteria'], ['rules_general', 'General Rules'],
+              ].map(([name, label]) => <div class="field"><label>{label}</label><textarea name={name}>{(s as any)[name] || ''}</textarea></div>)}
+              <button type="submit" class="btn btn-primary btn-sm">Save Rules</button>
+            </form>
+          </div>
         </div>
 
         <div>
@@ -129,6 +150,24 @@ adminSettings.post('/admin/settings/criteria', async (c) => {
   await c.get('db').execute('INSERT INTO evaluation_criteria (name, max_score, sort_order) VALUES (?,?,(SELECT COALESCE(MAX(sort_order),0)+1 FROM evaluation_criteria))', [name, maxScore])
   await logAudit(c.get('db'), user.id, 'criteria_added', 'evaluation_criteria', undefined, name)
   return c.redirect('/admin/settings?success=' + encodeURIComponent('Criterion added.'))
+})
+
+adminSettings.post('/admin/settings/home', async (c) => {
+  const user = c.get('user' as never) as any
+  const body = await c.req.parseBody()
+  await c.get('db').execute('UPDATE event_settings SET home_description=?, hero_text=?, home_highlights=?, updated_at=now() WHERE id=1', [sanitizeText(body.home_description as string, 3000), sanitizeText(body.hero_text as string, 300), sanitizeText(body.home_highlights as string, 2000)])
+  await logAudit(c.get('db'), user.id, 'home_content_updated', 'event_settings', 1)
+  return c.redirect('/admin/settings?success=' + encodeURIComponent('Home content saved.'))
+})
+
+adminSettings.post('/admin/settings/rules', async (c) => {
+  const user = c.get('user' as never) as any
+  const body = await c.req.parseBody()
+  const fields = ['rules_eligibility', 'rules_registration', 'rules_projects', 'rules_submission', 'rules_evaluation', 'rules_general']
+  const values = fields.map((field) => sanitizeText(body[field] as string, 3000))
+  await c.get('db').execute(`UPDATE event_settings SET ${fields.map((field) => `${field}=?`).join(', ')}, updated_at=now() WHERE id=1`, values)
+  await logAudit(c.get('db'), user.id, 'rules_updated', 'event_settings', 1)
+  return c.redirect('/admin/settings?success=' + encodeURIComponent('Rules saved.'))
 })
 
 export default adminSettings

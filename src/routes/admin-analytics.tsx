@@ -15,8 +15,8 @@ adminAnalytics.get('/admin/analytics', async (c) => {
   const byStatus = await db.many<any>(`SELECT status, COUNT(*) as n FROM teams GROUP BY status`)
   const byDay = await db.many<any>(`SELECT date(created_at) as day, COUNT(*) as n FROM teams GROUP BY day ORDER BY day`)
   const scoreDist = await db.many<any>(`SELECT total_score FROM evaluations WHERE status='completed' AND total_score IS NOT NULL`)
-  const checkinRate = await db.one<any>(`SELECT (SELECT COUNT(*) FROM teams WHERE checked_in=1) as checked, (SELECT COUNT(*) FROM teams WHERE status='approved') as approved`)
-  const projSubmitRate = await db.one<any>(`SELECT (SELECT COUNT(*) FROM projects WHERE status IN ('submitted','reviewed')) as submitted, (SELECT COUNT(*) FROM teams WHERE status='approved') as approved`)
+  const checkinRate = await db.one<any>(`SELECT (SELECT COUNT(*) FROM teams WHERE checked_in=1) as checked, (SELECT COUNT(*) FROM teams WHERE status IN ('registered','approved')) as approved`)
+  const projSubmitRate = await db.one<any>(`SELECT (SELECT COUNT(*) FROM projects WHERE status IN ('submitted','reviewed')) as submitted, (SELECT COUNT(*) FROM teams WHERE status IN ('registered','approved')) as approved`)
   const evalRate = await db.one<any>(`SELECT (SELECT COUNT(*) FROM evaluations WHERE status='completed') as done, (SELECT COUNT(*) FROM evaluator_assignments) as total`)
 
   const maxCollege = Math.max(1, ...byCollege.map((r) => r.n))

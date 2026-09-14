@@ -15,7 +15,7 @@ projectsRoutes.get('/projects', async (c) => {
   const categories = await c.get('db').many<any>('SELECT * FROM categories WHERE is_active = 1 ORDER BY sort_order')
   const colleges = await c.get('db').many<any>('SELECT id, name FROM colleges ORDER BY name')
 
-  const conditions = ["p.is_approved_public = 1", "t.status = 'approved'"]
+  const conditions = ["p.is_approved_public = 1", "t.status IN ('registered','approved')"]
   const params: any[] = []
   if (q) { conditions.push('(p.title LIKE ? OR t.team_name LIKE ?)'); params.push(`%${q}%`, `%${q}%`) }
   if (categorySlug) { conditions.push('cat.slug = ?'); params.push(categorySlug) }
@@ -126,7 +126,7 @@ projectsRoutes.get('/projects/:id', async (c) => {
        JOIN teams t ON t.id = p.team_id
        JOIN colleges col ON col.id = t.college_id
        LEFT JOIN categories cat ON cat.id = p.category_id
-       WHERE p.id = ? AND p.is_approved_public = 1 AND t.status = 'approved'`
+      WHERE p.id = ? AND p.is_approved_public = 1 AND t.status IN ('registered','approved')`
     , [id])
 
   if (!project) {

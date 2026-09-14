@@ -45,7 +45,22 @@ adminContent.get('/admin/announcements', async (c) => {
             <p>{a.message}</p>
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span class="meta">{new Date(a.published_at).toLocaleString()} {a.is_active ? '' : '(inactive)'}</span>
-              <form method="post" action={`/admin/announcements/${a.id}/toggle`}><button class="btn btn-ghost btn-sm" type="submit">{a.is_active ? 'Deactivate' : 'Activate'}</button></form>
+              <div>
+                <details>
+                  <summary class="btn btn-ghost btn-sm" style="display:inline-block; cursor:pointer; margin-right:6px;">Edit</summary>
+                  <form method="post" action={`/admin/announcements/${a.id}`} style="margin-top:12px; min-width:280px;">
+                    <div class="field"><label>Title</label><input name="title" value={a.title} required /></div>
+                    <div class="field"><label>Message</label><textarea name="message" required>{a.message}</textarea></div>
+                    <div class="form-row-2">
+                      <div class="field"><label>Priority</label><select name="priority"><option value="normal" selected={a.priority === 'normal'}>Normal</option><option value="important" selected={a.priority === 'important'}>Important</option><option value="urgent" selected={a.priority === 'urgent'}>Urgent</option></select></div>
+                      <div class="field"><label>Expires (optional)</label><input type="date" name="expires_at" value={a.expires_at ? a.expires_at.split('T')[0] : ''} /></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+                  </form>
+                </details>
+                <form method="post" action={`/admin/announcements/${a.id}/toggle`} style="display:inline-block; margin-right:6px;"><button class="btn btn-ghost btn-sm" type="submit">{a.is_active ? 'Hide' : 'Show'}</button></form>
+                <form method="post" action={`/admin/announcements/${a.id}/delete`} style="display:inline-block;"><button class="btn btn-danger btn-sm" type="submit" onclick="return confirm('Delete this announcement?')">Delete</button></form>
+              </div>
             </div>
           </div>
         ))
@@ -75,6 +90,28 @@ adminContent.post('/admin/announcements/:id/toggle', async (c) => {
   if (!a) return c.notFound()
   await c.get('db').execute('UPDATE announcements SET is_active = ? WHERE id = ?', [a.is_active ? 0 : 1, id])
   await logAudit(c.get('db'), user.id, 'announcement_toggled', 'announcement', id)
+  return c.redirect('/admin/announcements')
+})
+
+adminContent.post('/admin/announcements/:id', async (c) => {
+  const user = c.get('user' as never) as any
+  const id = c.req.param('id')
+  const body = await c.req.parseBody()
+  const title = sanitizeText(body.title as string, 160)
+  const message = sanitizeText(body.message as string, 1000)
+  const priority = ['normal', 'important', 'urgent'].includes(body.priority as string) ? body.priority as string : 'normal'
+  const expiresAt = body.expires_at ? String(body.expires_at) : null
+  if (!title || !message) return c.redirect('/admin/announcements')
+  await c.get('db').execute('UPDATE announcements SET title=?, message=?, priority=?, expires_at=? WHERE id=?', [title, message, priority, expiresAt, id])
+  await logAudit(c.get('db'), user.id, 'announcement_updated', 'announcement', id, title)
+  return c.redirect('/admin/announcements')
+})
+
+adminContent.post('/admin/announcements/:id/delete', async (c) => {
+  const user = c.get('user' as never) as any
+  const id = c.req.param('id')
+  await c.get('db').execute('DELETE FROM announcements WHERE id = ?', [id])
+  await logAudit(c.get('db'), user.id, 'announcement_deleted', 'announcement', id)
   return c.redirect('/admin/announcements')
 })
 

@@ -26,7 +26,6 @@ const ADMIN_NAV: { section: string; items: NavItem[] }[] = [
     { href: '/admin/analytics', label: 'Analytics', icon: '&#128202;' },
   ]},
   { section: 'Registrations', items: [
-    { href: '/admin/registrations', label: 'Manage Registrations', icon: '&#128203;' },
     { href: '/admin/teams', label: 'Teams', icon: '&#128101;' },
     { href: '/admin/colleges', label: 'Manage Colleges', icon: '&#127979;' },
     { href: '/admin/categories', label: 'Manage Categories', icon: '&#127991;' },

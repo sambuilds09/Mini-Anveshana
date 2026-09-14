@@ -19,7 +19,7 @@ adminResults.get('/admin/results', async (c) => {
         `SELECT p.id, p.title, p.final_score, t.team_name, col.name as college_name, cat.name as category_name,
           (SELECT COUNT(*) FROM evaluations e WHERE e.project_id = p.id AND e.status='completed') as eval_count
          FROM projects p JOIN teams t ON t.id = p.team_id JOIN colleges col ON col.id = t.college_id LEFT JOIN categories cat ON cat.id = p.category_id
-         WHERE t.status = 'approved'
+         WHERE t.status IN ('registered','approved')
          ORDER BY p.final_score DESC NULLS LAST, p.title`
         )
 
@@ -67,7 +67,7 @@ adminResults.get('/admin/results', async (c) => {
 adminResults.post('/admin/results/recalculate', async (c) => {
   const user = c.get('user' as never) as any
   const s = await getSettings(c.get('db'))
-  const projects = await c.get('db').many<any>(`SELECT p.id FROM projects p JOIN teams t ON t.id=p.team_id WHERE t.status='approved'`)
+  const projects = await c.get('db').many<any>(`SELECT p.id FROM projects p JOIN teams t ON t.id=p.team_id WHERE t.status IN ('registered','approved')`)
   for (const p of projects) {
     const score = await computeProjectScore(c.get('db'), p.id, s.scoring_formula)
     await c.get('db').execute('UPDATE projects SET final_score = ? WHERE id = ?', [score, p.id])

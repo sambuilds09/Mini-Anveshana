@@ -11,9 +11,7 @@ adminDashboard.get('/admin/dashboard', async (c) => {
   const db = c.get('db')
 
   const totalTeams = await db.one<{ n: number }>('SELECT COUNT(*) as n FROM teams')
-  const approved = await db.one<{ n: number }>(`SELECT COUNT(*) as n FROM teams WHERE status = 'approved'`)
-  const pending = await db.one<{ n: number }>(`SELECT COUNT(*) as n FROM teams WHERE status IN ('submitted','under_review')`)
-  const rejected = await db.one<{ n: number }>(`SELECT COUNT(*) as n FROM teams WHERE status = 'rejected'`)
+  const registered = await db.one<{ n: number }>(`SELECT COUNT(*) as n FROM teams WHERE status IN ('registered','approved')`)
   const checkedIn = await db.one<{ n: number }>(`SELECT COUNT(*) as n FROM teams WHERE checked_in = 1`)
   const projectsSubmitted = await db.one<{ n: number }>(`SELECT COUNT(*) as n FROM projects WHERE status IN ('submitted','reviewed')`)
   const evalsCompleted = await db.one<{ n: number }>(`SELECT COUNT(*) as n FROM evaluations WHERE status = 'completed'`)
@@ -30,7 +28,7 @@ adminDashboard.get('/admin/dashboard', async (c) => {
         <h3>Start Here</h3>
         <p class="meta">Use these shortcuts to set up the event and manage the information shown on the website.</p>
         <div class="grid-4">
-          <a href="/admin/settings" class="card"><strong>Event details</strong><span class="hint">Name, dates, venue, deadlines</span></a>
+          <a href="/admin/teams" class="card"><strong>View Teams</strong><span class="hint">Browse registered teams and download the CSV</span></a>
           <a href="/admin/schedule" class="card"><strong>Event schedule</strong><span class="hint">Add, edit, or remove time slots</span></a>
           <a href="/admin/categories" class="card"><strong>Categories</strong><span class="hint">Add tracks for projects</span></a>
           <a href="/admin/announcements" class="card"><strong>Announcements</strong><span class="hint">Post updates for participants</span></a>
@@ -39,16 +37,14 @@ adminDashboard.get('/admin/dashboard', async (c) => {
 
       <div class="grid-4" style="margin-bottom:28px;">
         <div class="stat-card"><div class="label">Total Teams</div><div class="value">{totalTeams?.n || 0}</div></div>
-        <div class="stat-card"><div class="label">Approved</div><div class="value">{approved?.n || 0}</div></div>
-        <div class="stat-card"><div class="label">Pending Review</div><div class="value">{pending?.n || 0}</div></div>
-        <div class="stat-card"><div class="label">Rejected</div><div class="value">{rejected?.n || 0}</div></div>
+        <div class="stat-card"><div class="label">Registered Teams</div><div class="value">{registered?.n || 0}</div></div>
       </div>
 
       <div class="grid-2" style="margin-bottom:28px;">
         <div class="dashboard-card">
           <h3>Check-in Progress</h3>
-          <div class="meta">{checkedIn?.n || 0} / {approved?.n || 0} approved teams checked in</div>
-          <div class="progress-bar"><span style={`width:${pct(checkedIn?.n || 0, approved?.n || 0)}%`}></span></div>
+          <div class="meta">{checkedIn?.n || 0} / {registered?.n || 0} registered teams checked in</div>
+          <div class="progress-bar"><span style={`width:${pct(checkedIn?.n || 0, registered?.n || 0)}%`}></span></div>
         </div>
         <div class="dashboard-card">
           <h3>Evaluation Progress</h3>
@@ -76,14 +72,14 @@ adminDashboard.get('/admin/dashboard', async (c) => {
                   <td>{t.registration_id}</td>
                   <td>{t.team_name}</td>
                   <td>{t.college_name}</td>
-                  <td><span class={`badge ${t.status === 'approved' ? 'badge-success' : t.status === 'rejected' ? 'badge-danger' : 'badge-warn'}`}>{t.status}</span></td>
+                  <td><span class="badge badge-success">Registered</span></td>
                   <td>{new Date(t.created_at).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <a href="/admin/registrations" class="btn btn-ghost btn-sm" style="margin-top:14px;">View all registrations &rarr;</a>
+        <a href="/admin/teams" class="btn btn-ghost btn-sm" style="margin-top:14px;">View all teams &rarr;</a>
       </div>
     </AppShell>
   )

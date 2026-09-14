@@ -86,8 +86,8 @@ studentRoutes.get('/student/dashboard', async (c) => {
 
   const steps = [
     { label: 'Registration Submitted', done: true },
-    { label: 'Registration Approved', done: team.status === 'approved', current: team.status === 'submitted' || team.status === 'under_review' },
-    { label: 'Project Submitted', done: project?.status === 'submitted' || project?.status === 'reviewed', current: team.status === 'approved' && project?.status !== 'submitted' },
+    { label: 'Registration Complete', done: team.status === 'registered' || team.status === 'approved', current: false },
+    { label: 'Project Submitted', done: project?.status === 'submitted' || project?.status === 'reviewed', current: (team.status === 'registered' || team.status === 'approved') && project?.status !== 'submitted' },
     { label: 'Event Check-in', done: !!team.checked_in },
     { label: 'Evaluation', done: (evaluation?.n || 0) > 0 },
     { label: 'Results', done: !!s.results_published },
@@ -328,15 +328,15 @@ studentRoutes.get('/student/project', async (c) => {
   const error = c.req.query('error')
   const success = c.req.query('success')
   const deadlinePassed = s.project_deadline ? new Date() > new Date(s.project_deadline) : false
-  const canEdit = team.status === 'approved' && (!deadlinePassed || s.late_submission_allowed) && project?.status !== 'reviewed'
+  const canEdit = (team.status === 'registered' || team.status === 'approved') && (!deadlinePassed || s.late_submission_allowed) && project?.status !== 'reviewed'
 
   return c.render(
     <AppShell title="Project" role="student" userName={user.full_name} activePath="/student/project">
       {error && <div class="alert alert-error">{decodeURIComponent(error)}</div>}
       {success && <div class="alert alert-success">{decodeURIComponent(success)}</div>}
 
-      {team.status !== 'approved' && (
-        <div class="alert alert-warn">Your team registration must be approved by the organizers before you can edit project details.</div>
+      {team.status !== 'registered' && team.status !== 'approved' && (
+        <div class="alert alert-warn">Your team is not currently eligible to edit project details.</div>
       )}
       {deadlinePassed && !s.late_submission_allowed && (
         <div class="alert alert-warn">The project submission deadline ({s.project_deadline}) has passed. Late submissions are currently not enabled.</div>
@@ -392,7 +392,7 @@ studentRoutes.post('/student/project/file-upload-url', requireRole('student'), a
   try {
     const user = c.get('user' as never) as any
     const team = await getTeamForUser(c.get('db'), user.id)
-    if (!team || team.status !== 'approved') return c.json({ error: 'Your team is not authorized to upload project files.' }, 403)
+    if (!team || !['registered', 'approved'].includes(team.status)) return c.json({ error: 'Your team is not authorized to upload project files.' }, 403)
     const body = await c.req.json<{ type?: UploadType; name?: string; contentType?: string; size?: number }>()
     if (!body.type || !body.name || !body.contentType || typeof body.size !== 'number' || !Number.isInteger(body.size)) return c.json({ error: 'Invalid file metadata.' }, 400)
     const allowed = body.type === 'image' ? ALLOWED_IMAGE_TYPES : ALLOWED_DOC_TYPES
@@ -410,7 +410,7 @@ studentRoutes.post('/student/project', requireRole('student'), async (c) => {
   const user = c.get('user' as never) as any
   const team = await getTeamForUser(c.get('db'), user.id)
   if (!team) return c.redirect('/student/dashboard')
-  if (team.status !== 'approved') return c.redirect('/student/project?error=' + encodeURIComponent('Team must be approved first.'))
+  if (!['registered', 'approved'].includes(team.status)) return c.redirect('/student/project?error=' + encodeURIComponent('Your team is not currently eligible to submit a project.'))
 
   const s = await getSettings(c.get('db'))
   const deadlinePassed = s.project_deadline ? new Date() > new Date(s.project_deadline) : false

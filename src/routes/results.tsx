@@ -31,7 +31,7 @@ resultsRoutes.get('/results', async (c) => {
          JOIN teams t ON t.id = p.team_id
          JOIN colleges col ON col.id = t.college_id
          LEFT JOIN categories cat ON cat.id = p.category_id
-         WHERE p.final_score IS NOT NULL AND t.status = 'approved'
+         WHERE p.final_score IS NOT NULL AND t.status IN ('registered','approved')
          ORDER BY p.final_score DESC`
         )
 

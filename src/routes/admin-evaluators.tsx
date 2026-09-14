@@ -22,7 +22,7 @@ adminEvaluators.get('/admin/evaluators', async (c) => {
          FROM evaluators ev JOIN users u ON u.id = ev.user_id ORDER BY u.full_name`
         )
 
-  const projects = await c.get('db').many<any>(`SELECT p.id, p.title, t.team_name FROM projects p JOIN teams t ON t.id = p.team_id WHERE t.status='approved' ORDER BY p.title`)
+  const projects = await c.get('db').many<any>(`SELECT p.id, p.title, t.team_name FROM projects p JOIN teams t ON t.id = p.team_id WHERE t.status IN ('registered','approved') ORDER BY p.title`)
 
   let assignments: any[] = []
   if (projectFilter) {

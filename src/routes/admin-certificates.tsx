@@ -15,7 +15,7 @@ adminCertificates.get('/admin/certificates', async (c) => {
   const s = await getSettings(c.get('db'))
   const success = c.req.query('success')
 
-  const eligibleTeams = await c.get('db').one<{ n: number }>(`SELECT COUNT(*) as n FROM teams WHERE status = 'approved' AND checked_in = 1`)
+  const eligibleTeams = await c.get('db').one<{ n: number }>(`SELECT COUNT(*) as n FROM teams WHERE status IN ('registered','approved') AND checked_in = 1`)
   const issued = await c.get('db').one<{ n: number }>('SELECT COUNT(*) as n FROM certificates')
 
   const rows = await c.get('db').many<any>(
@@ -83,7 +83,7 @@ adminCertificates.post('/admin/certificates/generate', async (c) => {
   const members = await c.get('db').many<any>(
         `SELECT m.id as member_id, m.full_name, t.id as team_id
          FROM team_members m JOIN teams t ON t.id = m.team_id
-         WHERE t.status = 'approved' AND t.checked_in = 1
+         WHERE t.status IN ('registered','approved') AND t.checked_in = 1
            AND m.id NOT IN (SELECT member_id FROM certificates WHERE member_id IS NOT NULL)`
         )
 

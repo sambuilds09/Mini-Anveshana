@@ -62,10 +62,6 @@ adminReg.get('/admin/registrations', async (c) => {
       <form method="get" class="toolbar">
         <div class="toolbar-left" style="flex:1;">
           <input type="search" name="q" placeholder="Search team, ID, or email" value={q} style="min-width:220px;" />
-          <select name="status">
-            <option value="">All Status</option>
-            {['draft','submitted','under_review','approved','rejected'].map((st) => <option value={st} selected={st === status}>{fmtStatusLabel(st)}</option>)}
-          </select>
           <select name="college">
             <option value="">All Colleges</option>
             {colleges.map((col) => <option value={col.id} selected={String(col.id) === collegeId}>{col.name}</option>)}
@@ -75,18 +71,7 @@ adminReg.get('/admin/registrations', async (c) => {
         <a href={`/admin/registrations/export.csv${qs({})}`} class="btn btn-ghost btn-sm">Export CSV</a>
       </form>
 
-      <form method="post" action="/admin/registrations/bulk" id="bulk-form">
-        <div class="toolbar" style="margin-bottom:10px;">
-          <div class="toolbar-left">
-            <select name="bulk_action" style="min-width:180px;">
-              <option value="">Bulk action…</option>
-              <option value="approve">Approve selected</option>
-              <option value="reject">Reject selected</option>
-            </select>
-            <button type="submit" class="btn btn-dark btn-sm" onclick="return confirm('Apply this action to all selected teams?')">Apply</button>
-          </div>
-        </div>
-
+      <div>
         {rows.length === 0 ? (
           <div class="empty-state"><div class="icon">&#128203;</div><h3>No registrations match your search</h3><p>Try adjusting your filters.</p></div>
         ) : (
@@ -117,7 +102,7 @@ adminReg.get('/admin/registrations', async (c) => {
             </table>
           </div>
         )}
-      </form>
+      </div>
 
       {totalPages > 1 && (
         <div class="pagination">

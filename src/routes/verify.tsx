@@ -72,7 +72,7 @@ verifyRoutes.get('/files/:key{.+}', async (c) => {
      FROM project_files pf
      JOIN projects p ON p.id = pf.project_id
      JOIN teams t ON t.id = p.team_id
-     WHERE pf.r2_key = ? AND pf.file_type = 'image' AND p.is_approved_public = 1 AND t.status = 'approved'`,
+    WHERE pf.r2_key = ? AND pf.file_type = 'image' AND p.is_approved_public = 1 AND t.status IN ('registered','approved')`,
     [key],
   )
   if (!record) return c.notFound()

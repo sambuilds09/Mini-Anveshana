@@ -80,6 +80,7 @@ export function SiteFooter() {
             <a href="/categories">Categories</a>
             <a href="/rules">Rules &amp; Guidelines</a>
             <a href="/schedule">Schedule</a>
+            <a href="/announcements">Announcements</a>
           </div>
           <div>
             <h4>Participate</h4>

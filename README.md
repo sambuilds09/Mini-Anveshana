@@ -48,6 +48,44 @@ ENVIRONMENT=development  # set to production in deployed environments to disable
 ADMIN_SETUP_TOKEN=       # one-time secret for /admin/setup
 ```
 
+## Production Admin Account Setup
+
+The permanent production admin account is created using a secure setup script that hashes the password before storage.
+
+### Create the permanent admin account
+
+```bash
+# Using environment variables (recommended for CI/CD):
+ADMIN_EMAIL=Admin09 ADMIN_PASSWORD=<password> npx tsx scripts/setup-production-admin.ts
+
+# Using command-line arguments:
+npx tsx scripts/setup-production-admin.ts Admin09 <password>
+```
+
+**Security notes**:
+- The password is never printed, logged, or stored as plaintext
+- The password is hashed using PBKDF2-SHA256 (100,000 iterations) before being stored in PostgreSQL
+- The script is **idempotent**: if the admin account already exists, it will not create a duplicate
+- Do **not** hardcode passwords in source code, Git commits, or .env files
+- The credentials should come from a secure source (CI/CD secrets, environment configuration, secure vault)
+
+### Login as admin
+
+After the setup script completes:
+
+1. Navigate to `/admin/login`
+2. Enter the Admin ID (e.g., `Admin09`) in the "Admin ID or Email" field
+3. Enter the password
+4. Click "Log In" to access the admin dashboard
+
+The admin account has full `super_admin` privileges and can:
+- Manage registrations and teams
+- Configure event settings, schedule, and announcements
+- Assign evaluators and review evaluations
+- Generate and verify certificates
+- Access the complete audit log
+- View analytics and performance metrics
+
 ## Local development
 
 ```bash
@@ -58,10 +96,15 @@ pm2 start ecosystem.config.cjs
 
 Configure `DATABASE_URL`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` in the ignored `.env.local` file before starting the app. Run `npx tsx scripts/test-supabase-storage.ts` to verify the private bucket and temporary test-object lifecycle.
 
-Demo accounts after seeding (password `Anveshana@123` for all):
-- `admin@minianveshana.dev` — super admin
-- `organizer@minianveshana.dev` — organizer
-- `evaluator1@minianveshana.dev`, `evaluator2@minianveshana.dev` — evaluators
+**Demo accounts** after seeding (password `Anveshana@123` for all):
+- `admin@minianveshana.dev` — super admin (development only)
+- `organizer@minianveshana.dev` — organizer (development only)
+- `evaluator1@minianveshana.dev`, `evaluator2@minianveshana.dev` — evaluators (development only)
+
+**For local development with the permanent admin account**:
+```bash
+ADMIN_EMAIL=Admin09 ADMIN_PASSWORD=<dev-password> npx tsx scripts/setup-production-admin.ts
+```
 
 Students are created through the normal `/register` flow (no seed needed).
 
@@ -71,7 +114,15 @@ Deployment is intentionally deferred. The live Supabase database uses `migration
 
 Before deployment, create the private `mini-anveshana-files` bucket in Supabase Storage, or run the storage integration test with the server-only Supabase variables configured. Configure `ADMIN_SETUP_TOKEN` as a secret and keep `ENVIRONMENT=production`. Never expose `SUPABASE_SERVICE_ROLE_KEY` to client-side code.
 
-After Supabase Storage and secrets are configured, run the build and regression checks manually:
+**Create the permanent admin account** before or immediately after deployment:
+
+```bash
+ADMIN_EMAIL=Admin09 ADMIN_PASSWORD=<secure-password> npx tsx scripts/setup-production-admin.ts
+```
+
+The password should come from a secure source (CI/CD secrets, password manager, secure vault) and should never be hardcoded in source files.
+
+After Supabase Storage, admin account, and secrets are configured, run the build and regression checks manually:
 
 ```bash
 npm install

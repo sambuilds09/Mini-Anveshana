@@ -1,11 +1,11 @@
 import { randomToken } from './auth'
 import type { PostgresDatabase } from './db'
 
-/** Generates the next registration ID, e.g. ANV-2026-00001, based on existing max for the year. */
+/** Generates the next readable registration ID, e.g. ANV26-00001. */
 export async function nextRegistrationId(db: PostgresDatabase, year: number): Promise<string> {
-  const prefix = `ANV-${year}-`
+  const prefix = `ANV${String(year).slice(-2)}-`
   const row = await db.one<{ registration_id: string }>(
-    `SELECT registration_id FROM teams WHERE registration_id LIKE ? ORDER BY id DESC LIMIT 1`,
+    `SELECT registration_id FROM teams WHERE registration_id LIKE ? ORDER BY registration_id DESC LIMIT 1 FOR UPDATE`,
     [`${prefix}%`]
   )
   let next = 1

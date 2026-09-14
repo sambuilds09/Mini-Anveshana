@@ -10,7 +10,7 @@ publicRoutes.get('/', async (c) => {
   const s = await getSettings(c.get('db'))
   const categories = await c.get('db').many<any>('SELECT * FROM categories WHERE is_active = 1 ORDER BY sort_order LIMIT 6')
   const projectCountRow = await c.get('db').one<{ n: number }>(`SELECT COUNT(*) as n FROM projects WHERE is_approved_public = 1`)
-  const teamCountRow = await c.get('db').one<{ n: number }>(`SELECT COUNT(*) as n FROM teams WHERE status = 'approved'`)
+  const teamCountRow = await c.get('db').one<{ n: number }>(`SELECT COUNT(*) as n FROM teams WHERE status IN ('registered','approved')`)
 
   return c.render(
     <SiteLayout title="Home" activePath="/">
@@ -20,7 +20,7 @@ publicRoutes.get('/', async (c) => {
             <span class="eyebrow">Inter-College Student Innovation Event</span>
             <h1>{s.event_name}</h1>
             <div class="headline">{s.tagline}</div>
-            <p class="lede">An inter-college platform where students turn ideas into practical solutions, present their projects, and learn from a community of innovators.</p>
+            <p class="lede">{fmt(s.home_description, 'An inter-college platform where students turn ideas into practical solutions, present their projects, and learn from a community of innovators.')}</p>
             <div class="hero-actions">
               <a href="/register" class="btn btn-primary">Register Your Team</a>
               <a href="/projects" class="btn btn-outline">Explore Projects</a>
@@ -60,7 +60,7 @@ publicRoutes.get('/', async (c) => {
         <div class="container">
           <div class="section-head">
             <div class="kicker">Why Mini Anveshana</div>
-            <h2>Have an idea worth building?</h2>
+            <h2>{fmt(s.hero_text, 'Have an idea worth building?')}</h2>
             <p>This is your stage to bring your team, build a working solution, and show it to people who care about good ideas.</p>
           </div>
           <div class="grid-3">
@@ -190,38 +190,14 @@ publicRoutes.get('/rules', async (c) => {
           <h1 style="font-size:34px;">Rules &amp; Guidelines</h1>
           <p style="color:var(--ink-700);">Please read this carefully before registering your team. These guidelines keep the event fair for everyone.</p>
 
-          <h3 style="margin-top:32px;">Eligibility</h3>
-          <ul style="padding-left:20px; color:var(--ink-700);">
-            <li>Open to students currently enrolled in a recognized college or university.</li>
-            <li>Each team must have {s.team_size_min}–{s.team_size_max} members, including the team leader.</li>
-            <li>A faculty mentor is required for every team.</li>
-          </ul>
-
-          <h3 style="margin-top:26px;">Registration</h3>
-          <ul style="padding-left:20px; color:var(--ink-700);">
-            <li>Registration closes on {fmt(s.registration_deadline, 'the published deadline')}.</li>
-            <li>All information provided during registration must be accurate. Teams found submitting false information may be disqualified.</li>
-            <li>Each student may only be part of one team.</li>
-          </ul>
-
-          <h3 style="margin-top:26px;">Project Submission</h3>
-          <ul style="padding-left:20px; color:var(--ink-700);">
-            <li>Projects must be submitted before the project submission deadline unless late submission is enabled by the organizers.</li>
-            <li>Submitted work must be original. Plagiarism or misrepresentation of existing tools as new work will lead to disqualification.</li>
-            <li>Teams should be ready with a working demo, even if it's an early prototype.</li>
-          </ul>
-
-          <h3 style="margin-top:26px;">Evaluation</h3>
-          <ul style="padding-left:20px; color:var(--ink-700);">
-            <li>Projects are evaluated on innovation, problem relevance, technical implementation, impact, and presentation.</li>
-            <li>Evaluator decisions are final.</li>
-          </ul>
-
-          <h3 style="margin-top:26px;">Code of Conduct</h3>
-          <ul style="padding-left:20px; color:var(--ink-700);">
-            <li>Be respectful to fellow participants, evaluators, and organizers.</li>
-            <li>Any form of misconduct may result in disqualification from the event.</li>
-          </ul>
+          {[
+            ['Eligibility', s.rules_eligibility || `Open to students currently enrolled in a recognized college or university.\nTeams may have ${s.team_size_min}–${s.team_size_max} members.`],
+            ['Registration', s.rules_registration || `Registration closes on ${fmt(s.registration_deadline, 'the published deadline')}.\nAll information provided must be accurate.`],
+            ['Project Rules', s.rules_projects || 'Projects should solve a real problem and represent original work.'],
+            ['Submission Rules', s.rules_submission || 'Submit project details before the published deadline.'],
+            ['Evaluation', s.rules_evaluation || 'Projects are evaluated on innovation, relevance, implementation, impact, and presentation.'],
+            ['General Rules', s.rules_general || 'Be respectful to participants, evaluators, and organizers.'],
+          ].map(([heading, content]) => <div><h3 style="margin-top:26px;">{heading}</h3><div style="white-space:pre-line; color:var(--ink-700);">{content}</div></div>)}
         </div>
       </section>
     </SiteLayout>
@@ -261,6 +237,41 @@ publicRoutes.get('/schedule', async (c) => {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      </section>
+    </SiteLayout>
+  )
+})
+
+// ---------------------------------------------------------------- Announcements
+publicRoutes.get('/announcements', async (c) => {
+  const rows = await c.get('db').many<any>(`SELECT * FROM announcements WHERE is_active = 1 AND (expires_at IS NULL OR expires_at > now()) ORDER BY published_at DESC`)
+  return c.render(
+    <SiteLayout title="Announcements" activePath="/announcements">
+      <section class="section">
+        <div class="container-narrow">
+          <div class="breadcrumb"><a href="/">Home</a> / Announcements</div>
+          <div class="section-head">
+            <div class="kicker">Updates</div>
+            <h2>Announcements</h2>
+            <p>Stay updated with the latest news about the event.</p>
+          </div>
+          {rows.length === 0 ? (
+            <div class="empty-state"><div class="icon">&#128276;</div><h3>No announcements yet</h3><p>Check back later for updates.</p></div>
+          ) : (
+            <div>{rows.map((a) => (
+              <div class="card" style="margin-bottom:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                  <div style="flex:1;">
+                    <h3 style="margin:0;">{a.title}</h3>
+                    <p style="margin:8px 0 0 0; white-space:pre-line;">{a.message}</p>
+                  </div>
+                  <span class={`badge ${a.priority === 'urgent' ? 'badge-danger' : a.priority === 'important' ? 'badge-warn' : 'badge-neutral'}`}>{a.priority}</span>
+                </div>
+                <div class="meta" style="margin-top:10px;">{new Date(a.published_at).toLocaleString()}</div>
+              </div>
+            ))}</div>
           )}
         </div>
       </section>

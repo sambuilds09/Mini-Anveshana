@@ -13,7 +13,7 @@ export type TeamRow = {
   leader_email: string
   leader_usn: string | null
   leader_phone: string | null
-  status: 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected'
+  status: 'draft' | 'registered' | 'submitted' | 'under_review' | 'approved' | 'rejected'
   rejection_reason: string | null
   qr_token: string
   checked_in: number
@@ -44,6 +44,7 @@ export async function getTeamForUser(db: PostgresDatabase, userId: number): Prom
 export function statusBadgeClass(status: string): string {
   switch (status) {
     case 'approved':
+    case 'registered':
     case 'completed':
     case 'success':
     case 'checked_in':
