@@ -105,9 +105,22 @@ registerRoutes.post('/register', async (c) => {
     const totalTeamSize = memberNames.length + 1
     if (totalTeamSize > s.team_size_max) throw new Error(`A team can have at most ${s.team_size_max} members.`)
 
-    // check for duplicate leader email as existing user
+    // Check for duplicate leader email — allow re-registration if the previous team was deleted
     const existingUser = await c.get('db').one<{ id: number }>('SELECT id FROM users WHERE email = ?', [leaderEmail])
-    if (existingUser) throw new Error('An account with this leader email already exists. Please use a different email or log in to manage your existing team.')
+    if (existingUser) {
+      // Check if this user still has an active team
+      const existingTeam = await c.get('db').one<{ id: number }>(
+        'SELECT id FROM teams WHERE leader_user_id = ? LIMIT 1',
+        [existingUser.id]
+      )
+      if (existingTeam) {
+        // Active team exists — real duplicate, block registration
+        throw new Error('An account with this leader email already exists. Please use a different email or log in to manage your existing team.')
+      }
+      // Orphan user (team was deleted by admin) — clean up so re-registration can proceed
+      await c.get('db').execute('DELETE FROM sessions WHERE user_id = ?', [existingUser.id])
+      await c.get('db').execute("DELETE FROM users WHERE id = ? AND role = 'student'", [existingUser.id])
+    }
 
     const passwordHash = await hashPassword(password)
     const { registrationId, teamId } = await c.get('db').transaction(async (db) => {
