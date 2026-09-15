@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS teams (
   department TEXT,
   leader_user_id INTEGER REFERENCES users(id),
   leader_name TEXT NOT NULL,
-  leader_email TEXT NOT NULL,
+  leader_email TEXT,
   leader_usn TEXT,
   leader_phone TEXT,
   status TEXT NOT NULL DEFAULT 'submitted'
@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS team_members (
   team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
   user_id INTEGER REFERENCES users(id),
   full_name TEXT NOT NULL,
-  email TEXT NOT NULL,
+  email TEXT,
   usn TEXT,
   department TEXT,
   year TEXT,

@@ -23,7 +23,7 @@ import { getDatabase, type PostgresDatabase } from '../src/lib/db'
 // Read Credentials from Environment or CLI Arguments
 // ============================================================================
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.argv[2]
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || process.argv[2])?.toLowerCase()
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || process.argv[3]
 const ADMIN_FULL_NAME = 'Production Admin'
 const DATABASE_URL = process.env.DATABASE_URL
@@ -87,9 +87,9 @@ async function setupProductionAdmin(): Promise<void> {
   }
 
   try {
-    // Check if admin already exists (idempotency)
+    // Check if admin already exists (idempotency) - case-insensitive match
     const existing = await db.one<{ id: number }>(
-      `SELECT id FROM users WHERE email = ? AND role IN ('organizer', 'super_admin')`,
+      `SELECT id FROM users WHERE LOWER(email) = LOWER(?) AND role IN ('organizer', 'super_admin')`,
       [ADMIN_EMAIL]
     )
 

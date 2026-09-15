@@ -128,24 +128,6 @@ adminReg.get('/admin/registrations/export.csv', async (c) => {
   return new Response(csv, { headers: { 'Content-Type': 'text/csv', 'Content-Disposition': 'attachment; filename="registrations.csv"' } })
 })
 
-adminReg.post('/admin/registrations/bulk', async (c) => {
-  const user = c.get('user' as never) as any
-  const body = await c.req.parseBody({ all: true })
-  const action = body.bulk_action as string
-  const ids = ([] as string[]).concat((body.team_ids as any) || [])
-  if (!action || ids.length === 0) return c.redirect('/admin/registrations')
-
-  for (const id of ids) {
-    if (action === 'approve') {
-      await c.get('db').execute(`UPDATE teams SET status='approved', updated_at=now() WHERE id = ?`, [id])
-      await logAudit(c.get('db'), user.id, 'registration_approved', 'team', id, 'Bulk approve')
-    } else if (action === 'reject') {
-      await c.get('db').execute(`UPDATE teams SET status='rejected', updated_at=now() WHERE id = ?`, [id])
-      await logAudit(c.get('db'), user.id, 'registration_rejected', 'team', id, 'Bulk reject')
-    }
-  }
-  return c.redirect('/admin/registrations')
-})
 
 adminReg.get('/admin/registrations/:id', async (c) => {
   const user = c.get('user' as never) as any
@@ -181,18 +163,6 @@ adminReg.get('/admin/registrations/:id', async (c) => {
         </div>
 
         <div>
-          <div class="dashboard-card" style="margin-bottom:16px;">
-            <h3>Review Decision</h3>
-            <form method="post" action={`/admin/registrations/${id}/decision`}>
-              <div class="field"><label>Rejection reason (required if rejecting)</label><textarea name="reason" placeholder="Explain why, if rejecting"></textarea></div>
-              <div style="display:flex; gap:10px;">
-                <button type="submit" name="decision" value="approved" class="btn btn-primary btn-sm">Approve</button>
-                <button type="submit" name="decision" value="rejected" class="btn btn-danger btn-sm">Reject</button>
-                <button type="submit" name="decision" value="under_review" class="btn btn-ghost btn-sm">Mark Under Review</button>
-              </div>
-            </form>
-          </div>
-
           {project && (
             <div class="dashboard-card">
               <h3>{project.title}</h3>
@@ -219,20 +189,6 @@ adminReg.get('/admin/registrations/:id', async (c) => {
       </div>
     </AppShell>
   )
-})
-
-adminReg.post('/admin/registrations/:id/decision', async (c) => {
-  const user = c.get('user' as never) as any
-  const id = c.req.param('id')
-  const body = await c.req.parseBody()
-  const decision = body.decision as string
-  const reason = sanitizeText(body.reason as string, 500)
-  if (!['approved', 'rejected', 'under_review'].includes(decision)) return c.redirect(`/admin/registrations/${id}`)
-  if (decision === 'rejected' && !reason) return c.redirect(`/admin/registrations/${id}`)
-
-  await c.get('db').execute(`UPDATE teams SET status = ?, rejection_reason = ?, updated_at = now() WHERE id = ?`, [decision, decision === 'rejected' ? reason : null, id])
-  await logAudit(c.get('db'), user.id, `registration_${decision}`, 'team', id, reason || undefined)
-  return c.redirect(`/admin/registrations/${id}`)
 })
 
 adminReg.post('/admin/projects/:id/toggle-public', async (c) => {

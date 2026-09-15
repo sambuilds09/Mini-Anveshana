@@ -1,8 +1,9 @@
 -- Mini Anveshana registration/content improvements.
 -- Apply only after review. This migration does not seed data.
 
-ALTER TABLE teams DROP CONSTRAINT IF EXISTS teams_status_check;
-ALTER TABLE teams ADD CONSTRAINT teams_status_check CHECK (status IN ('draft', 'registered', 'submitted', 'under_review', 'approved', 'rejected'));
+-- Note: The teams status constraint is now properly fixed in migration 0004.
+-- This comment documents the evolution: 0001 had draft/submitted/under_review/approved/rejected
+-- 0004 simplifies it to just draft/registered since there's no admin approval workflow.
 
 ALTER TABLE team_members ALTER COLUMN email DROP NOT NULL;
 ALTER TABLE team_members ALTER COLUMN department DROP NOT NULL;

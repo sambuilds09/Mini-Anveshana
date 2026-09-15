@@ -13,7 +13,7 @@ export type TeamRow = {
   leader_email: string
   leader_usn: string | null
   leader_phone: string | null
-  status: 'draft' | 'registered' | 'submitted' | 'under_review' | 'approved' | 'rejected'
+  status: 'draft' | 'registered'
   rejection_reason: string | null
   qr_token: string
   checked_in: number

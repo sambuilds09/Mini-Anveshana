@@ -1,0 +1,22 @@
+[1mdiff --git a/migrations/0001_initial_schema.postgres.sql b/migrations/0001_initial_schema.postgres.sql[m
+[1mindex 532d73c..635d16d 100644[m
+[1m--- a/migrations/0001_initial_schema.postgres.sql[m
+[1m+++ b/migrations/0001_initial_schema.postgres.sql[m
+[36m@@ -88,7 +88,7 @@[m [mCREATE TABLE IF NOT EXISTS teams ([m
+   leader_email TEXT NOT NULL,[m
+   leader_usn TEXT,[m
+   leader_phone TEXT,[m
+[31m-  status TEXT NOT NULL DEFAULT 'submitted' CHECK (status IN ('draft', 'submitted', 'under_review', 'approved', 'rejected')),[m
+[32m+[m[32m  status TEXT NOT NULL DEFAULT 'submitted' CHECK (status IN ('draft', 'registered', 'submitted', 'under_review', 'approved', 'rejected')),[m
+   rejection_reason TEXT,[m
+   qr_token TEXT NOT NULL UNIQUE,[m
+   checked_in INTEGER NOT NULL DEFAULT 0,[m
+[36m@@ -107,7 +107,7 @@[m [mCREATE TABLE IF NOT EXISTS team_members ([m
+   team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,[m
+   user_id INTEGER REFERENCES users(id),[m
+   full_name TEXT NOT NULL,[m
+[31m-  email TEXT NOT NULL,[m
+[32m+[m[32m  email TEXT,[m
+   usn TEXT,[m
+   department TEXT,[m
+   year TEXT,[m

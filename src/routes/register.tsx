@@ -39,7 +39,7 @@ registerRoutes.get('/register', async (c) => {
 
           <form class="form-card" method="post" action="/register">
             <h3>Register Your Team</h3>
-            <div class="field"><label>College Name *</label><input name="college_name" required maxLength={200} /></div>
+            <div class="field"><label>Team Name *</label><input name="team_name" required maxLength={120} /></div>
             <div class="field"><label>Department *</label><input name="department" required maxLength={120} /></div>
             <div class="field"><label>Team Leader Name *</label><input name="leader_name" required maxLength={120} /></div>
             <div class="field"><label>Leader Email *</label><input type="email" name="leader_email" required maxLength={160} /></div>
@@ -61,17 +61,17 @@ registerRoutes.post('/register', async (c) => {
   try {
     const body = await c.req.parseBody({ all: true })
 
-    const collegeName = sanitizeText(body.college_name as string, 200)
-    const department = sanitizeText(body.department as string, 120)
     const teamName = sanitizeText(body.team_name as string, 120) || `${sanitizeText(body.leader_name as string, 120)} Team`
+    const collegeName = sanitizeText(body.college_name as string, 200) || teamName || 'General College'
+    const department = sanitizeText(body.department as string, 120)
     const leaderName = sanitizeText(body.leader_name as string, 120)
     const leaderEmail = sanitizeText(body.leader_email as string, 160).toLowerCase()
     const password = (body.password as string) || ''
     const projectTitle = sanitizeText(body.project_title as string, 160)
     const consent = body.consent === 'on' || body.consent === 'true'
 
-    if (!collegeName || !department) throw new Error('Please complete the college and department fields.')
-    if (!teamName || !leaderName || !isEmail(leaderEmail)) throw new Error('Please complete the team leader fields correctly.')
+    if (!teamName || !department) throw new Error('Please complete the team name and department fields.')
+    if (!leaderName || !isEmail(leaderEmail)) throw new Error('Please complete the team leader fields correctly.')
     if (!password || password.length < 8) throw new Error('Password must be at least 8 characters.')
     if (!projectTitle) throw new Error('Project title is required.')
     if (!consent) throw new Error('You must confirm the accuracy of your information to proceed.')
