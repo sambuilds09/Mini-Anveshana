@@ -39,14 +39,38 @@ async function teamRows(db: any, search = '', categoryId = '') {
      ORDER BY t.id DESC`, params)
 }
 
+export async function deleteTeamRecord(db: any, teamId: number, adminUserId: number) {
+  const team = await db.one('SELECT * FROM teams WHERE id = ?', [teamId])
+  if (!team) return null
+
+  await db.transaction(async (tx: any) => {
+    await tx.execute('DELETE FROM certificates WHERE team_id = ?', [teamId])
+    await tx.execute('DELETE FROM teams WHERE id = ?', [teamId])
+    if (team.leader_user_id) {
+      const otherTeams = await tx.one('SELECT COUNT(*) as n FROM teams WHERE leader_user_id = ?', [team.leader_user_id])
+      const otherMembers = await tx.one('SELECT COUNT(*) as n FROM team_members WHERE user_id = ?', [team.leader_user_id])
+      if ((otherTeams?.n || 0) === 0 && (otherMembers?.n || 0) === 0) {
+        await tx.execute('DELETE FROM sessions WHERE user_id = ?', [team.leader_user_id])
+        await tx.execute('DELETE FROM users WHERE id = ? AND role = \'student\'', [team.leader_user_id])
+      }
+    }
+  })
+  await logAudit(db, adminUserId, 'team_deleted', 'team', String(teamId), `Deleted team ${team.team_name} (${team.registration_id})`)
+  return team
+}
+
 adminTeams.get('/admin/teams', async (c) => {
   const user = c.get('user' as never) as any
   const search = c.req.query('q')?.trim() || ''
   const selectedCategory = c.req.query('category')?.trim() || ''
+  const error = c.req.query('error')
+  const success = c.req.query('success')
   const categories = await c.get('db').many<any>('SELECT * FROM categories ORDER BY sort_order, name')
   const rows = await teamRows(c.get('db'), search, selectedCategory)
   return c.render(
     <AppShell title="Teams" role="organizer" userName={user.full_name} activePath="/admin/teams" subtitle={`${rows.length} registered teams`}>
+      {error && <div class="alert alert-error">{decodeURIComponent(error)}</div>}
+      {success && <div class="alert alert-success">{decodeURIComponent(success)}</div>}
       <div class="toolbar">
         <form method="get" class="toolbar-left" style="flex:1;">
           <input type="search" name="q" value={search} placeholder="Search team ID, college, leader, or project" style="min-width:260px;" />
@@ -67,13 +91,30 @@ adminTeams.get('/admin/teams', async (c) => {
           <tbody>{rows.length === 0 ? <tr><td colspan={10}>No teams found.</td></tr> : rows.map((row) => (
             <tr>
               <td style="font-weight:700;">{row.registration_id}</td><td><span class="tag">{row.category_name || '—'}</span></td><td>{row.college_name}</td><td>{row.department || '—'}</td><td>{row.leader_name}</td><td>{row.member_names || '—'}</td><td>{row.project_title || '—'}</td><td>{new Date(row.created_at).toLocaleDateString()}</td><td><span class="badge badge-success">Registered</span></td>
-              <td><a href={`/admin/registrations/${row.id}`} class="btn btn-ghost btn-sm">View Team</a> <a href={`/registration/pass?id=${encodeURIComponent(row.registration_id)}`} class="btn btn-ghost btn-sm">View QR</a></td>
+              <td>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                  <a href={`/admin/registrations/${row.id}`} class="btn btn-ghost btn-sm">View Team</a>
+                  <a href={`/registration/pass?id=${encodeURIComponent(row.registration_id)}`} class="btn btn-ghost btn-sm">View QR</a>
+                  <form method="post" action={`/admin/teams/${row.id}/delete`} style="display:inline;">
+                    <button type="submit" class="btn btn-danger btn-sm" onclick={`return confirm('Delete team ${row.registration_id} (${row.leader_name})? This cannot be undone.')`}>Delete</button>
+                  </form>
+                </div>
+              </td>
             </tr>
           ))}</tbody>
         </table>
       </div>
     </AppShell>
   )
+})
+
+adminTeams.post('/admin/teams/:id/delete', async (c) => {
+  const user = c.get('user' as never) as any
+  const id = parseInt(c.req.param('id'), 10)
+  if (isNaN(id)) return c.redirect('/admin/teams?error=' + encodeURIComponent('Invalid team ID.'))
+  const deleted = await deleteTeamRecord(c.get('db'), id, user.id)
+  if (!deleted) return c.redirect('/admin/teams?error=' + encodeURIComponent('Team not found.'))
+  return c.redirect('/admin/teams?success=' + encodeURIComponent(`Team ${deleted.registration_id} (${deleted.team_name}) deleted successfully.`))
 })
 
 adminTeams.get('/admin/teams/export.csv', async (c) => {

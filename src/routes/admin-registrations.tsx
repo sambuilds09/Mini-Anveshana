@@ -6,6 +6,7 @@ import { statusBadgeClass, fmtStatusLabel } from '../lib/db-helpers'
 import { logAudit } from '../lib/audit'
 import { sanitizeText } from '../lib/validation'
 import { getStorage } from '../lib/storage'
+import { deleteTeamRecord } from './admin-teams'
 
 const adminReg = new Hono<{ Bindings: Bindings; Variables: Vars }>()
 adminReg.use('/admin/registrations/*', requireRole('organizer', 'super_admin'))
@@ -19,6 +20,8 @@ adminReg.get('/admin/registrations', async (c) => {
   const q = c.req.query('q')?.trim() || ''
   const status = c.req.query('status') || ''
   const collegeId = c.req.query('college') || ''
+  const successMsg = c.req.query('success')
+  const errorMsg = c.req.query('error')
   const page = Math.max(1, parseInt(c.req.query('page') || '1', 10))
   const perPage = 15
 
@@ -59,6 +62,8 @@ adminReg.get('/admin/registrations', async (c) => {
 
   return c.render(
     <AppShell title="Registrations" role="organizer" userName={user.full_name} activePath="/admin/registrations" subtitle={`${total} total registrations`}>
+      {errorMsg && <div class="alert alert-error">{decodeURIComponent(errorMsg)}</div>}
+      {successMsg && <div class="alert alert-success">{decodeURIComponent(successMsg)}</div>}
       <form method="get" class="toolbar">
         <div class="toolbar-left" style="flex:1;">
           <input type="search" name="q" placeholder="Search team, ID, or email" value={q} style="min-width:220px;" />
@@ -70,6 +75,7 @@ adminReg.get('/admin/registrations', async (c) => {
         </div>
         <a href={`/admin/registrations/export.csv${qs({})}`} class="btn btn-ghost btn-sm">Export CSV</a>
       </form>
+
 
       <div>
         {rows.length === 0 ? (
@@ -95,7 +101,14 @@ adminReg.get('/admin/registrations', async (c) => {
                     <td><span class={`badge ${statusBadgeClass(t.status)}`}>{fmtStatusLabel(t.status)}</span></td>
                     <td><span class={`badge ${t.checked_in ? 'badge-success' : 'badge-neutral'}`}>{t.checked_in ? 'Checked In' : 'Not Checked In'}</span></td>
                     <td>{t.eval_count > 0 ? <span class="badge badge-success">{t.eval_count} done</span> : <span class="badge badge-neutral">None</span>}</td>
-                    <td><a href={`/admin/registrations/${t.id}`} class="btn btn-ghost btn-sm">View</a></td>
+                    <td>
+                      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <a href={`/admin/registrations/${t.id}`} class="btn btn-ghost btn-sm">View</a>
+                        <form method="post" action={`/admin/registrations/${t.id}/delete`} style="display:inline;">
+                          <button type="submit" class="btn btn-danger btn-sm" onclick={`return confirm('Delete team ${t.registration_id} (${t.team_name})? This cannot be undone.')`}>Delete</button>
+                        </form>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -142,7 +155,12 @@ adminReg.get('/admin/registrations/:id', async (c) => {
 
   return c.render(
     <AppShell title={`Registration ${team.registration_id}`} role="organizer" userName={user.full_name} activePath="/admin/registrations">
-      <div class="breadcrumb"><a href="/admin/registrations">Registrations</a> / {team.registration_id}</div>
+      <div class="breadcrumb" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <span><a href="/admin/registrations">Registrations</a> / {team.registration_id}</span>
+        <form method="post" action={`/admin/registrations/${team.id}/delete`} style="display:inline;">
+          <button type="submit" class="btn btn-danger btn-sm" onclick={`return confirm('Permanently delete team ${team.registration_id} (${team.team_name})? This action cannot be undone.')`}>🗑 Delete Team</button>
+        </form>
+      </div>
 
       <div class="grid-2" style="align-items:flex-start; margin-bottom:20px;">
         <div class="dashboard-card">
@@ -189,6 +207,15 @@ adminReg.get('/admin/registrations/:id', async (c) => {
       </div>
     </AppShell>
   )
+})
+
+adminReg.post('/admin/registrations/:id/delete', async (c) => {
+  const user = c.get('user' as never) as any
+  const id = parseInt(c.req.param('id'), 10)
+  if (isNaN(id)) return c.redirect('/admin/registrations?error=' + encodeURIComponent('Invalid team ID.'))
+  const deleted = await deleteTeamRecord(c.get('db'), id, user.id)
+  if (!deleted) return c.redirect('/admin/registrations?error=' + encodeURIComponent('Team not found.'))
+  return c.redirect('/admin/registrations?success=' + encodeURIComponent(`Team ${deleted.registration_id} (${deleted.team_name}) deleted successfully.`))
 })
 
 adminReg.post('/admin/projects/:id/toggle-public', async (c) => {
