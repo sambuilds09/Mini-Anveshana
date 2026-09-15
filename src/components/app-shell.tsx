@@ -57,6 +57,8 @@ function initials(name: string) {
   return name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || 'U'
 }
 
+import { html } from 'hono/html'
+
 export const AppShell: FC<AppShellProps> = ({ title, role, userName, activePath, children, topbarActions, subtitle }) => {
   const logoutHref = role === 'student' ? '/student/logout' : role === 'evaluator' ? '/evaluator/logout' : '/admin/logout'
   return (
@@ -64,11 +66,15 @@ export const AppShell: FC<AppShellProps> = ({ title, role, userName, activePath,
       <SiteHead title={title} />
       <body>
         <div class="app-shell">
-          <aside class="app-sidebar">
-            <a href="/" class="brand">
-              <span class="mark">M</span>
-              <span>MINI ANVESHANA<small>{role === 'student' ? 'Student Portal' : role === 'evaluator' ? 'Evaluator Portal' : 'Organizer Console'}</small></span>
-            </a>
+          <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+          <aside class="app-sidebar" id="app-sidebar">
+            <div class="sidebar-head-mobile">
+              <a href="/" class="brand">
+                <span class="mark">M</span>
+                <span>MINI ANVESHANA<small>{role === 'student' ? 'Student Portal' : role === 'evaluator' ? 'Evaluator Portal' : 'Organizer Console'}</small></span>
+              </a>
+              <button class="sidebar-toggle-close" id="sidebar-toggle-close" aria-label="Close menu">✕</button>
+            </div>
             {role === 'student' && (
               <div>
                 <div class="side-section">Menu</div>
@@ -105,11 +111,14 @@ export const AppShell: FC<AppShellProps> = ({ title, role, userName, activePath,
           </aside>
           <main class="app-main">
             <div class="app-topbar">
-              <div>
-                <h1>{title}</h1>
-                {subtitle && <div class="sub">{subtitle}</div>}
-              </div>
               <div style="display:flex; align-items:center; gap:12px;">
+                <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" aria-label="Open Menu">☰ Menu</button>
+                <div>
+                  <h1>{title}</h1>
+                  {subtitle && <div class="sub">{subtitle}</div>}
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                 {topbarActions}
                 <div class="user-chip">
                   <span class="avatar">{initials(userName)}</span>
@@ -120,6 +129,25 @@ export const AppShell: FC<AppShellProps> = ({ title, role, userName, activePath,
             {children}
           </main>
         </div>
+        {html`<script>
+          (function() {
+            var btn = document.getElementById('sidebar-toggle-btn');
+            var close = document.getElementById('sidebar-toggle-close');
+            var backdrop = document.getElementById('sidebar-backdrop');
+            var sidebar = document.getElementById('app-sidebar');
+            function openSidebar() {
+              sidebar?.classList.add('mobile-open');
+              backdrop?.classList.add('mobile-open');
+            }
+            function closeSidebar() {
+              sidebar?.classList.remove('mobile-open');
+              backdrop?.classList.remove('mobile-open');
+            }
+            btn?.addEventListener('click', openSidebar);
+            close?.addEventListener('click', closeSidebar);
+            backdrop?.addEventListener('click', closeSidebar);
+          })();
+        </script>`}
       </body>
     </html>
   )

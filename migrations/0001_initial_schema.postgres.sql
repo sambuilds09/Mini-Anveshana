@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS teams (
   registration_id TEXT NOT NULL UNIQUE,
   team_name TEXT NOT NULL,
   college_id INTEGER NOT NULL REFERENCES colleges(id),
+  category_id INTEGER REFERENCES categories(id),
   department TEXT,
   leader_user_id INTEGER REFERENCES users(id),
   leader_name TEXT NOT NULL,
@@ -99,6 +100,7 @@ CREATE TABLE IF NOT EXISTS teams (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_teams_college ON teams(college_id);
+CREATE INDEX IF NOT EXISTS idx_teams_category ON teams(category_id);
 CREATE INDEX IF NOT EXISTS idx_teams_status ON teams(status);
 CREATE INDEX IF NOT EXISTS idx_teams_qr ON teams(qr_token);
 

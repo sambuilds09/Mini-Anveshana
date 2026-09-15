@@ -46,9 +46,15 @@ verifyRoutes.get('/verify', async (c) => {
 
 verifyRoutes.get('/registration/pass', async (c) => {
   const regId = c.req.query('id') || ''
-  const team = await c.get('db').one<any>(`SELECT t.*, col.name as college_name FROM teams t JOIN colleges col ON col.id = t.college_id WHERE t.registration_id = ?`, [regId])
+  const team = await c.get('db').one<any>(
+    `SELECT t.*, col.name as college_name, COALESCE(cat.name, pcat.name) as category_name
+     FROM teams t
+     JOIN colleges col ON col.id = t.college_id
+     LEFT JOIN categories cat ON cat.id = t.category_id
+     LEFT JOIN projects p ON p.team_id = t.id
+     LEFT JOIN categories pcat ON pcat.id = p.category_id
+     WHERE t.registration_id = ?`, [regId])
   if (!team) return c.notFound()
-  const project = await c.get('db').one<any>(`SELECT cat.name as category_name FROM projects p LEFT JOIN categories cat ON cat.id = p.category_id WHERE p.team_id = ?`, [team.id])
   const baseUrl = new URL(c.req.url).origin
 
   return c.render(
@@ -56,7 +62,7 @@ verifyRoutes.get('/registration/pass', async (c) => {
       <section class="section">
         <div class="container-narrow">
           <div class="breadcrumb"><a href="/">Home</a> / Registration Pass</div>
-          <RegistrationPass team={team} categoryName={project?.category_name} verifyBaseUrl={baseUrl} />
+          <RegistrationPass team={team} categoryName={team.category_name} verifyBaseUrl={baseUrl} />
         </div>
       </section>
     </SiteLayout>

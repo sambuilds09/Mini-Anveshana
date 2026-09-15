@@ -45,9 +45,24 @@ registerRoutes.get('/register', async (c) => {
             <div class="field"><label>Leader Email *</label><input type="email" name="leader_email" required maxLength={160} /></div>
             <div class="field"><label>Student portal password *</label><input type="password" name="password" required minLength={8} /></div>
             {[2, 3, 4].map((member) => <div class="field"><label>Team Member {member} Name</label><input name={`member_name_${member}`} maxLength={120} /></div>)}
+            <div class="field">
+              <label>Category *</label>
+              {categories.length === 0 ? (
+                <div class="alert alert-warn" style="margin-bottom:0;">
+                  No categories available. Please contact the organizer.
+                </div>
+              ) : (
+                <select name="category_id" required>
+                  <option value="">Select category</option>
+                  {categories.map((cat: any) => (
+                    <option value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
             <div class="field"><label>Project Title *</label><input name="project_title" required maxLength={160} /></div>
             <label class="checkbox-row"><input type="checkbox" name="consent" required /> <span>I confirm these registration details are accurate.</span></label>
-            <button type="submit" class="btn btn-primary btn-block">Register Team</button>
+            <button type="submit" class="btn btn-primary btn-block" disabled={categories.length === 0}>Register Team</button>
           </form>
         </div>
       </section>
@@ -67,14 +82,23 @@ registerRoutes.post('/register', async (c) => {
     const leaderName = sanitizeText(body.leader_name as string, 120)
     const leaderEmail = sanitizeText(body.leader_email as string, 160).toLowerCase()
     const password = (body.password as string) || ''
+    const categoryId = parseInt(body.category_id as string, 10)
     const projectTitle = sanitizeText(body.project_title as string, 160)
     const consent = body.consent === 'on' || body.consent === 'true'
 
     if (!teamName || !department) throw new Error('Please complete the team name and department fields.')
     if (!leaderName || !isEmail(leaderEmail)) throw new Error('Please complete the team leader fields correctly.')
     if (!password || password.length < 8) throw new Error('Password must be at least 8 characters.')
+    if (!categoryId || isNaN(categoryId)) throw new Error('Please select a valid category.')
     if (!projectTitle) throw new Error('Project title is required.')
     if (!consent) throw new Error('You must confirm the accuracy of your information to proceed.')
+
+    // Validate category against DB: must exist and be active
+    const validCategory = await c.get('db').one<{ id: number; name: string }>(
+      'SELECT id, name FROM categories WHERE id = ? AND is_active = 1',
+      [categoryId]
+    )
+    if (!validCategory) throw new Error('The selected category is invalid or currently inactive. Please choose an active category.')
 
     const memberNames = [2, 3, 4].map((member) => sanitizeText(body[`member_name_${member}`] as string, 120)).filter(Boolean)
 
@@ -95,9 +119,9 @@ registerRoutes.post('/register', async (c) => {
         [leaderEmail, passwordHash, leaderName, 'student', null]
       )
       const team = await db.one<{ id: number }>(
-        `INSERT INTO teams (registration_id, team_name, college_id, department, leader_user_id, leader_name, leader_email, leader_usn, leader_phone, status, qr_token, consent_confirmed)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'registered', ?, 1) RETURNING id`,
-        [registrationId, teamName, college.id, department, user!.id, leaderName, leaderEmail, null, null, qrToken]
+        `INSERT INTO teams (registration_id, team_name, college_id, category_id, department, leader_user_id, leader_name, leader_email, leader_usn, leader_phone, status, qr_token, consent_confirmed)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'registered', ?, 1) RETURNING id`,
+        [registrationId, teamName, college.id, validCategory.id, department, user!.id, leaderName, leaderEmail, null, null, qrToken]
       )
       const teamId = team!.id
       await db.execute('INSERT INTO team_members (team_id, user_id, full_name, email, department, is_leader, invitation_status) VALUES (?,?,?,?,?,1,\'accepted\')', [teamId, user!.id, leaderName, leaderEmail, department])
@@ -106,8 +130,8 @@ registerRoutes.post('/register', async (c) => {
       }
       const project = await db.one<{ id: number }>(
         `INSERT INTO projects (team_id, category_id, title, problem_statement, solution_description, technologies, expected_outcome, status)
-         VALUES (?,NULL,?,'To be provided.','To be provided.','To be provided.',NULL,'draft') RETURNING id`,
-        [teamId, projectTitle]
+         VALUES (?,?,?,'To be provided.','To be provided.','To be provided.',NULL,'draft') RETURNING id`,
+        [teamId, validCategory.id, projectTitle]
       )
       return { registrationId, teamId }
     })

@@ -124,6 +124,8 @@ async function main() {
     }, 'SELECT 1 from live Supabase PostgreSQL succeeded.')
 
     await mark('SCHEMA', async () => {
+      await sql`ALTER TABLE teams ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id)`
+      await sql`CREATE INDEX IF NOT EXISTS idx_teams_category ON teams(category_id)`
       const rows = await sql<{ table_name: string }[]>`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`
       const names = new Set(rows.map((row) => row.table_name))
       const missing = requiredTables.filter((table) => !names.has(table))
@@ -226,7 +228,15 @@ async function main() {
       const nowYear = new Date().getFullYear()
       const registrationId = `ANV-${nowYear}-${String(Date.now()).slice(-5).padStart(5, '0')}`
       const qrToken = `QR-${uniqueSuffix}`
+      const catName = `Temp Category ${uniqueSuffix}`
+      const catSlug = `temp-category-${uniqueSuffix}`
       const registration = await db.transaction(async (tx) => {
+        const category = await tx.one<{ id: number }>(
+          'INSERT INTO categories (name, slug, description, sort_order, is_active) VALUES (?, ?, ?, 1, 1) RETURNING id',
+          [catName, catSlug, 'Temporary Category for Integration Test'],
+        )
+        if (!category) throw new Error('Category insert failed during registration commit test.')
+
         const college = await tx.one<{ id: number }>(
           'INSERT INTO colleges (name, university, city, state) VALUES (?, ?, ?, ?) RETURNING id',
           [tmpCollegeName, 'Temp University', 'Live City', 'Live State'],
@@ -240,9 +250,9 @@ async function main() {
         if (!leader) throw new Error('Team leader insert failed during registration commit.')
 
         const team = await tx.one<{ id: number }>(
-          `INSERT INTO teams (registration_id, team_name, college_id, department, leader_user_id, leader_name, leader_email, leader_usn, leader_phone, status, qr_token, consent_confirmed)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted', ?, 1) RETURNING id`,
-          [registrationId, tmpTeamName, college.id, 'Computer Science', leader.id, 'Temp Team Leader', tmpLeaderEmail, '1MS-TEAM', '2222222222', qrToken],
+          `INSERT INTO teams (registration_id, team_name, college_id, category_id, department, leader_user_id, leader_name, leader_email, leader_usn, leader_phone, status, qr_token, consent_confirmed)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted', ?, 1) RETURNING id`,
+          [registrationId, tmpTeamName, college.id, category.id, 'Computer Science', leader.id, 'Temp Team Leader', tmpLeaderEmail, '1MS-TEAM', '2222222222', qrToken],
         )
         if (!team) throw new Error('Team insert failed during registration commit.')
 
@@ -253,8 +263,8 @@ async function main() {
 
         const project = await tx.one<{ id: number }>(
           `INSERT INTO projects (team_id, category_id, title, problem_statement, solution_description, technologies, status)
-           VALUES (?, NULL, ?, ?, ?, ?, 'submitted') RETURNING id`,
-          [team.id, tmpProjectTitle, 'Problem statement for commit test', 'Solution description for commit test', 'TypeScript, PostgreSQL'],
+           VALUES (?, ?, ?, ?, ?, ?, 'submitted') RETURNING id`,
+          [team.id, category.id, tmpProjectTitle, 'Problem statement for commit test', 'Solution description for commit test', 'TypeScript, PostgreSQL'],
         )
         if (!project) throw new Error('Project insert failed during registration commit.')
 
@@ -263,7 +273,7 @@ async function main() {
           [project.id, 'abstract', 'temp-abstract.pdf', `projects/${project.id}/abstract.pdf`, 'application/pdf', 1234],
         )
 
-        return { collegeId: college.id, leaderId: leader.id, teamId: team.id, projectId: project.id }
+        return { collegeId: college.id, leaderId: leader.id, teamId: team.id, projectId: project.id, categoryId: category.id }
       })
 
       cleanup.push(async () => {
@@ -273,14 +283,15 @@ async function main() {
         await sql`DELETE FROM teams WHERE id = ${registration.teamId}`
         await sql`DELETE FROM users WHERE email = ${tmpLeaderEmail}`
         await sql`DELETE FROM colleges WHERE name = ${tmpCollegeName}`
+        await sql`DELETE FROM categories WHERE name = ${catName}`
       })
 
-      const teamReadback = await db.one<{ id: number; registration_id: string; leader_email: string }>(
-        'SELECT id, registration_id, leader_email FROM teams WHERE leader_email = ?',
+      const teamReadback = await db.one<{ id: number; registration_id: string; leader_email: string; category_id: number }>(
+        'SELECT id, registration_id, leader_email, category_id FROM teams WHERE leader_email = ?',
         [tmpLeaderEmail],
       )
-      if (!teamReadback || teamReadback.registration_id !== registrationId) {
-        throw new Error('Registration commit did not persist the expected team row.')
+      if (!teamReadback || teamReadback.registration_id !== registrationId || teamReadback.category_id !== registration.categoryId) {
+        throw new Error('Registration commit did not persist the expected team row with category_id.')
       }
 
       const memberCount = await db.one<{ count: number }>('SELECT COUNT(*)::int AS count FROM team_members WHERE team_id = ?', [registration.teamId])

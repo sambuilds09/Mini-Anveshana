@@ -14,7 +14,6 @@ export function RegistrationPass({ team, categoryName, verifyBaseUrl }: { team: 
         </div>
         <div class="pass-qr" dangerouslySetInnerHTML={{ __html: qr }}></div>
         <div class="pass-row"><span class="l">Team</span><span class="r">{team.team_name}</span></div>
-        <div class="pass-row"><span class="l">College</span><span class="r">{team.college_name || '—'}</span></div>
         <div class="pass-row"><span class="l">Category</span><span class="r">{categoryName || '—'}</span></div>
         <div class="pass-row"><span class="l">Status</span><span class="r">{team.status.replace('_', ' ').toUpperCase()}</span></div>
       </div>

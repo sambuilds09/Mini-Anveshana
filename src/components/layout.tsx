@@ -46,10 +46,15 @@ export function SiteHeader(activePath?: string) {
           {NAV_ITEMS.map((item) => (
             <a href={item.href} class={activePath === item.href ? 'active' : ''}>{item.label}</a>
           ))}
+          <div class="nav-links-mobile-actions">
+            <a href="/student/login" class="btn btn-outline btn-sm">Student Login</a>
+            <a href="/admin/login" class="btn btn-ghost btn-sm">Admin Login</a>
+            <a href="/register" class="btn btn-primary btn-sm">Register Team</a>
+          </div>
         </nav>
         <div class="nav-cta">
-          <a href="/student/login" class="btn btn-outline btn-sm">Student Login</a>
-          <a href="/admin/login" class="btn btn-ghost btn-sm">Admin Login</a>
+          <a href="/student/login" class="btn btn-outline btn-sm nav-desktop-only">Student Login</a>
+          <a href="/admin/login" class="btn btn-ghost btn-sm nav-desktop-only">Admin Login</a>
           <a href="/register" class="btn btn-primary btn-sm">Register Team</a>
           <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-controls="nav-links" aria-expanded="false">☰</button>
         </div>
