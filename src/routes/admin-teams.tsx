@@ -44,15 +44,24 @@ export async function deleteTeamRecord(db: any, teamId: number, adminUserId: num
   if (!team) return null
 
   await db.transaction(async (tx: any) => {
+    // Check BEFORE deleting whether leader has other teams or memberships
+    let leaderIsOrphan = false
+    if (team.leader_user_id) {
+      const otherTeams = await tx.one(
+        'SELECT COUNT(*) as n FROM teams WHERE leader_user_id = ? AND id != ?',
+        [team.leader_user_id, teamId]
+      )
+      const otherMembers = await tx.one(
+        'SELECT COUNT(*) as n FROM team_members WHERE user_id = ? AND team_id != ?',
+        [team.leader_user_id, teamId]
+      )
+      leaderIsOrphan = (otherTeams?.n || 0) === 0 && (otherMembers?.n || 0) === 0
+    }
     await tx.execute('DELETE FROM certificates WHERE team_id = ?', [teamId])
     await tx.execute('DELETE FROM teams WHERE id = ?', [teamId])
-    if (team.leader_user_id) {
-      const otherTeams = await tx.one('SELECT COUNT(*) as n FROM teams WHERE leader_user_id = ?', [team.leader_user_id])
-      const otherMembers = await tx.one('SELECT COUNT(*) as n FROM team_members WHERE user_id = ?', [team.leader_user_id])
-      if ((otherTeams?.n || 0) === 0 && (otherMembers?.n || 0) === 0) {
-        await tx.execute('DELETE FROM sessions WHERE user_id = ?', [team.leader_user_id])
-        await tx.execute('DELETE FROM users WHERE id = ? AND role = \'student\'', [team.leader_user_id])
-      }
+    if (leaderIsOrphan && team.leader_user_id) {
+      await tx.execute('DELETE FROM sessions WHERE user_id = ?', [team.leader_user_id])
+      await tx.execute("DELETE FROM users WHERE id = ? AND role = 'student'", [team.leader_user_id])
     }
   })
   await logAudit(db, adminUserId, 'team_deleted', 'team', String(teamId), `Deleted team ${team.team_name} (${team.registration_id})`)
